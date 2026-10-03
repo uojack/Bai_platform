@@ -1,0 +1,37 @@
+# Local state and credentials
+private/
+runtime/
+.venv/
+node_modules/
+__pycache__/
+*.pyc
+.DS_Store
+._*
+*.sqlite*
+.env*
+*.pem
+*.key
+# Media and original site deliveries remain in the complete local/archive copy.
+web/media/
+outputs/
+packages/
+qa/
+docs/
+DELIVERY.md
+deployment/*.service
+deployment/*.service.example
+tools/*.before-*
+tools/set_test_uri.xml
+apps/four-screen/deployment/
+apps/four-screen/deployment-state.json
+apps/four-screen/manifest.json
+apps/legacy-pulse/config/pulse-sources.json
+video/**/assets/
+video/**/renders/
+video/**/meta.json
+video/**/AGENTS.md
+video/**/CLAUDE.md
+# Experimental GUI permission launcher is not the production service path.
+deployment/macos/launcher.m
+deployment/macos/install_agents.py
+video/**/snapshots/

@@ -1,0 +1,17 @@
+{
+  "localAddress": "127.0.0.1",
+  "interface": "",
+  "mediaPort": 4341,
+  "feedPort": 18785,
+  "managementPort": 4340,
+  "visionUrl": "http://127.0.0.1:1",
+  "networkUrl": "http://127.0.0.1:1",
+  "acousticsUrl": "http://127.0.0.1:1",
+  "tvSubnet": "192.0.2.0/24",
+  "node": "/path/to/node",
+  "python": "/path/to/BaiPlay/.venv/bin/python",
+  "ffmpeg": "/path/to/ffmpeg",
+  "chrome": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "playwright": "playwright-core",
+  "aosReadOnlyUrl": "http://127.0.0.1:1"
+}

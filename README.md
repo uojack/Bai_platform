@@ -63,4 +63,3 @@ sudo .venv/bin/python deployment/macos/install_daemons.py --supervisor
 ## 仓库内容
 
 本仓库仅保存可公开代码、依赖与部署模板。`private/`、登录数据库、初始密码、现场配置、历史部署记录、媒体和运行日志均已排除。完整开发资料由本机工作目录及原主机归档保管。同步前运行 `git diff --cached` 并检查新增文件，不能用 Git 代替完整数据备份。
-

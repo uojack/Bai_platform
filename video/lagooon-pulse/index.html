@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=3840, height=2160" />
+    <title>AOS Pulse LAGOOON</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        width: 3840px;
+        height: 2160px;
+        overflow: hidden;
+        background: #15110d;
+      }
+      #root {
+        position: relative;
+        width: 3840px;
+        height: 2160px;
+        overflow: hidden;
+        background: #15110d;
+      }
+      .clip {
+        position: absolute;
+        inset: 0;
+        width: 3840px;
+        height: 2160px;
+      }
+      .screen {
+        width: 3840px;
+        height: 2160px;
+        object-fit: cover;
+        display: block;
+        opacity: 0;
+        will-change: transform, opacity;
+      }
+      #screen-home { opacity: 1; }
+    </style>
+  </head>
+  <body>
+    <main id="root" data-composition-id="main" data-start="0" data-duration="96" data-width="3840" data-height="2160">
+      <img id="screen-home" class="clip screen" data-start="0" data-duration="96" data-track-index="1" src="assets/00-home.png" alt="AOS Pulse LAGOOON overview" />
+      <img id="screen-network" class="clip screen" data-start="0" data-duration="96" data-track-index="2" src="assets/01-network.png" alt="Network system" />
+      <img id="screen-audio" class="clip screen" data-start="0" data-duration="96" data-track-index="3" src="assets/02-audio.png" alt="Audio system" />
+      <img id="screen-compute" class="clip screen" data-start="0" data-duration="96" data-track-index="4" src="assets/03-compute.png" alt="Compute system" />
+      <img id="screen-devices" class="clip screen" data-start="0" data-duration="96" data-track-index="5" src="assets/04-devices.png" alt="Devices system" />
+      <img id="screen-space" class="clip screen" data-start="0" data-duration="96" data-track-index="6" src="assets/05-space.png" alt="Space system" />
+      <audio id="lagooon-ambient" src="assets/lagooon-ambient.wav" data-start="0" data-duration="96" data-track-index="10" data-volume="0.16"></audio>
+    </main>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const dissolve = 0.8;
+      const scenes = [
+        { id: "#screen-home", start: 0, end: 18 },
+        { id: "#screen-network", start: 18, end: 28 },
+        { id: "#screen-audio", start: 28, end: 38 },
+        { id: "#screen-compute", start: 38, end: 48 },
+        { id: "#screen-devices", start: 48, end: 58 },
+        { id: "#screen-space", start: 58, end: 68 }
+      ];
+
+      scenes.forEach((scene, index) => {
+        const duration = scene.end - scene.start;
+        tl.fromTo(scene.id, { scale: 1 }, { scale: 1.008, duration, ease: "sine.inOut", immediateRender: false }, scene.start);
+        if (index > 0) {
+          tl.fromTo(scene.id, { opacity: 0 }, { opacity: 1, duration: dissolve, ease: "sine.inOut", immediateRender: false }, scene.start - dissolve);
+        }
+        if (index < scenes.length - 1) {
+          tl.to(scene.id, { opacity: 0, duration: dissolve, ease: "sine.inOut" }, scene.end - dissolve);
+        }
+      });
+
+      tl.to("#screen-space", { opacity: 0, duration: dissolve, ease: "sine.inOut" }, 67.2);
+      tl.set("#screen-home", { scale: 1 }, 67.2);
+      tl.to("#screen-home", { opacity: 1, duration: dissolve, ease: "sine.inOut" }, 67.2);
+      tl.to("#screen-home", { scale: 1.012, duration: 28.8, ease: "sine.inOut" }, 67.2);
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
+

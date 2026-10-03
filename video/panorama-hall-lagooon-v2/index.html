@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=5760,height=1080" />
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <style>
+    @font-face{font-family:noto;src:local("Noto Sans CJK SC")}@font-face{font-family:serifcn;src:local("Noto Serif CJK SC")}@font-face{font-family:"Source Han Sans SC";src:local("Source Han Sans SC")}@font-face{font-family:"Source Han Serif SC";src:local("Source Han Serif SC")}
+    *{box-sizing:border-box}html,body{margin:0;width:5760px;height:1080px;overflow:hidden;background:#080706}body{font-family:noto,"Source Han Sans SC",sans-serif;color:#ead7ba}
+    #root{position:relative;width:5760px;height:1080px;overflow:hidden;background:radial-gradient(ellipse at 50% 55%,#21150e 0,#100b08 35%,#080706 72%)}.clip{position:absolute;inset:0}
+    .grain{opacity:.1;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.25'/%3E%3C/svg%3E")}
+    .divider{position:absolute;top:0;bottom:0;width:2px;background:#39291c;opacity:.55}.topline{position:absolute;left:120px;right:120px;top:95px;height:1px;background:linear-gradient(90deg,transparent,#bd8755 15%,#bd8755 85%,transparent);opacity:.52}
+    .brand{position:absolute;left:0;right:0;top:54px;text-align:center;font-size:16px;letter-spacing:.48em;color:#bd8755}.edge{position:absolute;top:55px;font-size:14px;letter-spacing:.3em;color:#917b68}.edge.l{left:150px}.edge.r{right:150px}
+    svg{width:5760px;height:1080px}.ring{fill:none;stroke:#bd8755;stroke-width:2;opacity:.13;transform-origin:2880px 550px}.wave{fill:none;stroke:#bd8755;stroke-width:2.2;opacity:.35}.wave.live{stroke:#7cc7bc;stroke-width:4;opacity:.8}.hair{fill:none;stroke:#8b6848;stroke-width:1.2;opacity:.18}.node{fill:#080706;stroke:#bd8755;stroke-width:3}.pulse{fill:#7cc7bc;filter:drop-shadow(0 0 14px #7cc7bc)}
+    .scene{position:absolute;top:254px;width:1420px;min-height:510px}.scene.left{left:245px}.scene.center{left:2170px;text-align:center}.scene.right{right:245px;text-align:right}.phase{font-size:17px;letter-spacing:.42em;color:#bd8755;margin-bottom:26px}.scene h1{font-family:serifcn,"Source Han Serif SC",serif;font-size:104px;font-weight:500;line-height:1.12;letter-spacing:.06em;margin:0}.scene.center h1{font-size:116px}.statement{font-size:30px;line-height:1.6;letter-spacing:.12em;margin-top:28px;color:#c7b59d}.english{font-size:16px;letter-spacing:.3em;margin-top:18px;color:#9a8774}.scene .index{font-size:120px;line-height:1;color:#bd8755;opacity:.11;margin-bottom:-54px}
+    .status{position:absolute;bottom:66px;display:flex;align-items:center;gap:16px;color:#8d7a68;font-size:15px;letter-spacing:.22em}.status.l{left:245px}.status.c{left:2530px}.status.r{right:245px}.dot{width:9px;height:9px;border-radius:50%;background:#7cc7bc;box-shadow:0 0 20px rgba(124,199,188,.7)}
+    .sensor{position:absolute;bottom:128px;width:650px;border-top:1px solid rgba(189,135,85,.35);padding-top:16px;color:#8f7964;font-size:14px;letter-spacing:.24em}.sensor.l{left:245px}.sensor.c{left:2555px;text-align:center}.sensor.r{right:245px;text-align:right}
+  </style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="96" data-width="5760" data-height="1080">
+  <audio id="ambient" data-audio-track data-start="0" data-duration="96" src="assets/lagooon-ambient.wav" preload="auto"></audio>
+  <div id="ambient-grain" class="clip grain" data-start="0" data-duration="96" data-track-index="1"></div>
+  <div id="spatial-field" class="clip" data-start="0" data-duration="96" data-track-index="2">
+    <div class="divider" style="left:1919px"></div><div class="divider" style="left:3839px"></div><div class="topline"></div>
+    <div class="brand">BAIYIN · AOS PULSE</div><div class="edge l">PANORAMA HALL / 全景厅</div><div class="edge r">SPATIAL INTELLIGENCE / 空间智能</div>
+    <svg viewBox="0 0 5760 1080" aria-hidden="true">
+      <g id="rings" data-layout-allow-overflow><circle class="ring r1" cx="2880" cy="550" r="155"/><circle class="ring r2" cx="2880" cy="550" r="285"/><circle class="ring r3" cx="2880" cy="550" r="430"/><circle class="ring r4" cx="2880" cy="550" r="620"/><circle class="ring r5" cx="2880" cy="550" r="840"/></g>
+      <g id="wavefield" data-layout-allow-overflow>
+        <path class="hair" d="M0 590 C520 460 830 730 1320 590 S2160 470 2640 610 S3550 730 4020 580 S5100 470 5760 610"/>
+        <path class="wave" d="M0 630 C510 500 860 760 1360 620 S2170 500 2670 640 S3540 760 4050 610 S5140 500 5760 640"/>
+        <path id="livewave" class="wave live" d="M0 610 C510 480 840 745 1340 605 S2160 480 2650 625 S3540 745 4040 595 S5120 480 5760 625"/>
+      </g>
+      <g><circle class="node" cx="1010" cy="650" r="18"/><circle class="pulse p1" cx="1010" cy="650" r="7"/><circle class="node" cx="2880" cy="690" r="20"/><circle class="pulse p2" cx="2880" cy="690" r="8"/><circle class="node" cx="4760" cy="655" r="18"/><circle class="pulse p3" cx="4760" cy="655" r="7"/></g>
+    </svg>
+  </div>
+  <div id="narrative-copy" class="clip" data-start="0" data-duration="96" data-track-index="3">
+    <section class="scene left"><div class="index">01</div><div class="phase">PERCEPTION / 感知</div><h1>空间，正在感知</h1><p class="statement">声音不是背景，<br>是空间的坐标。</p><p class="english">SOUND BECOMES A SPATIAL COORDINATE</p></section>
+    <section class="scene center"><div class="index">02</div><div class="phase">COGNITION / 认知</div><h1>让空间开始聆听</h1><p class="statement">从听见声音，<br>到理解空间。</p><p class="english">FROM HEARING TO SPATIAL UNDERSTANDING</p></section>
+    <section class="scene right"><div class="index">03</div><div class="phase">RESPONSE / 回应</div><h1>空间，正在回应</h1><p class="statement">复杂留在系统，<br>体验回到人身边。</p><p class="english">THE SYSTEM HOLDS COMPLEXITY · SPACE RESPONDS</p></section>
+    <div class="sensor l">CAMERA · 视觉感知</div><div class="sensor c">BAIFIELD · 空间渲染</div><div class="sensor r">MICROPHONE · 声场感知</div>
+    <div class="status l"><span class="dot"></span>待机感知演示</div><div class="status c"><span class="dot"></span>AOS COGNITIVE SPACE</div><div class="status r"><span class="dot"></span>SIMULATED VISUAL</div>
+  </div>
+</div>
+<script>
+  window.__timelines=window.__timelines||{};
+  const tl=gsap.timeline({paused:true});
+  tl.from('.scene',{opacity:0,y:26,duration:2.8,stagger:.5,ease:'power2.out'},.4)
+    .from('.brand,.edge,.status,.sensor',{opacity:0,duration:2.2,stagger:.08,ease:'power1.out'},1)
+    .fromTo('#wavefield',{x:-34},{x:34,duration:48,yoyo:true,repeat:1,ease:'sine.inOut'},0)
+    .fromTo('#livewave',{strokeDasharray:'54 140',strokeDashoffset:0},{strokeDashoffset:-1920,duration:96,ease:'none'},0)
+    .fromTo('.r1',{scale:.78,opacity:.05},{scale:1.25,opacity:.2,duration:16,yoyo:true,repeat:5,ease:'sine.inOut'},0)
+    .fromTo('.r2',{scale:.86,opacity:.16},{scale:1.18,opacity:.04,duration:16,yoyo:true,repeat:5,ease:'sine.inOut'},2)
+    .fromTo('.r3',{scale:.9,opacity:.04},{scale:1.12,opacity:.18,duration:16,yoyo:true,repeat:5,ease:'sine.inOut'},4)
+    .fromTo('.r4',{scale:.94,opacity:.14},{scale:1.08,opacity:.03,duration:16,yoyo:true,repeat:5,ease:'sine.inOut'},6)
+    .fromTo('.r5',{scale:.97,opacity:.03},{scale:1.04,opacity:.14,duration:16,yoyo:true,repeat:5,ease:'sine.inOut'},8)
+    .fromTo('.pulse',{scale:.55,opacity:.25},{scale:1.8,opacity:1,duration:4,yoyo:true,repeat:23,stagger:.7,ease:'sine.inOut',transformOrigin:'center'},0)
+    .to('#ambient',{volume:.16,duration:4,ease:'sine.inOut'},0)
+    .to('#ambient',{volume:.03,duration:5,ease:'sine.inOut'},91);
+  window.__timelines.main=tl;
+</script>
+</body></html>

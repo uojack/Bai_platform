@@ -1,0 +1,8 @@
+{
+  "managementUrl": "http://127.0.0.1:1",
+  "visionUrl": "http://127.0.0.1:1",
+  "maintenance": true,
+  "pollSeconds": 10,
+  "audioSources": [],
+  "screens": {}
+}

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#050708">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <title>BaiPlayer Client</title>
+  <link rel="stylesheet" href="/player.css">
+  <link rel="stylesheet" href="/power.css">
+</head>
+<body>
+  <main id="stage" class="stage" data-power="active">
+    <div id="mediaLayer" class="media-layer"></div>
+    <div class="standby-screen"><span>BAIYIN</span><small>STANDBY · 等待AOS唤醒</small></div>
+    <div class="mesh"></div>
+    <div class="orb one"></div><div class="orb two"></div>
+    <header><span class="logo">BAIYIN</span><div><b id="deviceName">BAIPLAYER CLIENT</b><small id="connection">正在连接AOS母机</small></div></header>
+    <section class="content"><p id="sceneKind">AMBIENT FIELD</p><h1 id="sceneTitle">让空间开始聆听</h1><h2 id="sceneSubtitle">BAIYIN · AOS</h2><div class="wave" aria-hidden="true"></div></section>
+    <footer><span id="zoneName">未分区</span><span id="sceneId">SCENE · AMBIENT</span><span id="runtimeMode">SIMULATION</span></footer>
+  </main>
+  <div class="unlock" id="unlock"><button>启用音频</button></div>
+  <script src="/player.js"></script>
+</body>
+</html>

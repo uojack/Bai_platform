@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=5760, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Noto Sans SC"; src: local("Noto Sans CJK SC"); }
+      @font-face { font-family: "Source Han Sans SC"; src: local("Source Han Sans SC"); }
+      @font-face { font-family: "Noto Serif SC"; src: local("Noto Serif CJK SC"); }
+      @font-face { font-family: "Source Han Serif SC"; src: local("Source Han Serif SC"); }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 5760px;
+        height: 1080px;
+        overflow: hidden;
+        background: #090907;
+      }
+      body {
+        font-family: "Noto Sans SC", "Source Han Sans SC", sans-serif;
+      }
+      code,
+      pre,
+      .monospace {
+        font-family: "JetBrains Mono", monospace;
+      }
+      #root { position: relative; overflow: hidden; color: #eee5d3; background: #090907; }
+      .clip { position: absolute; inset: 0; }
+      .grain { opacity: .12; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.23'/%3E%3C/svg%3E"); }
+      .screen-divider { position:absolute; top:0; bottom:0; width:2px; background:#26231d; opacity:.7; }
+      .copy { position:absolute; top:302px; width:1320px; }
+      .copy.left { left:260px; }
+      .copy.center { left:2180px; text-align:center; }
+      .copy.right { left:4100px; text-align:right; }
+      .eyebrow { font-size:19px; letter-spacing:.28em; color:#b88a55; margin-bottom:24px; }
+      h1 { font-family:"Noto Serif SC", "Source Han Serif SC", serif; font-size:96px; font-weight:500; letter-spacing:.06em; line-height:1.2; }
+      .center h1 { font-size:108px; }
+      .sub { margin-top:24px; font-size:28px; letter-spacing:.12em; color:#aaa397; }
+      .en { margin-top:18px; font-size:18px; letter-spacing:.32em; color:#8c877e; }
+      .brand { position:absolute; left:0; right:0; top:104px; text-align:center; font-size:20px; letter-spacing:.42em; color:#b88a55; }
+      .status { position:absolute; bottom:72px; display:flex; gap:22px; align-items:center; font-size:17px; letter-spacing:.16em; color:#827d74; }
+      .status.left { left:260px; } .status.center { left:2678px; } .status.right { right:260px; }
+      .dot { width:10px; height:10px; border-radius:50%; background:#68cdb5; box-shadow:0 0 22px rgba(104,205,181,.6); }
+      .line-art { width:5760px; height:1080px; }
+      .field-line { fill:none; stroke:#b88a55; stroke-width:2.2; opacity:.48; }
+      .field-line.live { stroke:#68cdb5; stroke-width:3.2; opacity:.9; }
+      .ring { fill:none; stroke:#b88a55; stroke-width:2; opacity:.18; transform-origin:2880px 552px; }
+      .node { fill:#090907; stroke:#e5b879; stroke-width:3; }
+      .node-live { fill:#68cdb5; opacity:.95; }
+      .edge-label { fill:#827d74; font-size:16px; letter-spacing:4px; }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="30"
+      data-width="5760"
+      data-height="1080"
+    >
+      <div id="ambient-grain" class="clip grain" data-start="0" data-duration="30" data-track-index="1"></div>
+      <div id="spatial-field" class="clip" data-start="0" data-duration="30" data-track-index="2">
+        <div class="screen-divider" style="left:1919px"></div>
+        <div class="screen-divider" style="left:3839px"></div>
+        <svg class="line-art" viewBox="0 0 5760 1080" aria-hidden="true">
+          <g id="rings">
+            <circle class="ring r1" cx="2880" cy="552" r="145"/><circle class="ring r2" cx="2880" cy="552" r="245"/>
+            <circle class="ring r3" cx="2880" cy="552" r="355"/><circle class="ring r4" cx="2880" cy="552" r="490"/>
+          </g>
+          <g id="field" data-layout-allow-overflow>
+            <path class="field-line" d="M0 618 C420 520 730 715 1130 610 S1810 520 2190 622 S2810 720 3190 600 S3830 505 4240 615 S5120 715 5760 585"/>
+            <path class="field-line" d="M0 650 C370 570 760 745 1190 640 S1820 548 2240 648 S2830 748 3240 626 S3900 535 4300 642 S5160 738 5760 615"/>
+            <path class="field-line live" id="liveLine" d="M0 632 C420 540 740 725 1150 625 S1810 534 2210 635 S2820 733 3210 613 S3860 518 4270 628 S5130 725 5760 600"/>
+          </g>
+          <g id="nodes">
+            <circle class="node" cx="1060" cy="627" r="16"/><circle class="node-live n1" cx="1060" cy="627" r="7"/>
+            <circle class="node" cx="2880" cy="688" r="18"/><circle class="node-live n2" cx="2880" cy="688" r="8"/>
+            <circle class="node" cx="4700" cy="680" r="16"/><circle class="node-live n3" cx="4700" cy="680" r="7"/>
+          </g>
+          <text class="edge-label" x="260" y="120">BAIYIN PANORAMA HALL · PERCEPTION</text>
+          <text class="edge-label" x="5500" y="120" text-anchor="end">AOS · COGNITIVE SPACE SYSTEM</text>
+        </svg>
+      </div>
+      <div id="panorama-copy" class="clip" data-start="0" data-duration="30" data-track-index="3">
+        <div class="brand">BAIYIN · AOS</div>
+        <section class="copy left"><div class="eyebrow">PERCEPTION / 感知</div><h1>空间，正在感知</h1><p class="sub">声音、位置、关系，成为此刻的线索。</p><p class="en">SOUND · POSITION · RELATION</p></section>
+        <section class="copy center"><div class="eyebrow">COGNITION / 认知</div><h1>让空间开始聆听</h1><p class="sub">从听见声音，到读懂空间。</p><p class="en">FROM HEARING SOUND TO UNDERSTANDING SPACE</p></section>
+        <section class="copy right"><div class="eyebrow">RESPONSE / 回应</div><h1>空间，正在回应</h1><p class="sub">复杂止于系统，体验回到人身边。</p><p class="en">SPACE RESPONDS TO HUMAN NEEDS</p></section>
+        <div class="status left"><span class="dot"></span><span>CAMERA · 感知就绪</span></div>
+        <div class="status center"><span class="dot"></span><span>BAIFIELD · 空间理解中</span></div>
+        <div class="status right"><span class="dot"></span><span>MIC · 声场就绪</span></div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      tl.from(".copy", { opacity: 0, y: 26, duration: 2.4, stagger: .38, ease: "power2.out" }, 0.3);
+      tl.from(".brand, .status", { opacity: 0, duration: 2.2, stagger: .16, ease: "power1.out" }, 1.0);
+      tl.fromTo("#field", { x: -22 }, { x: 22, duration: 15, yoyo: true, repeat: 1, ease: "sine.inOut" }, 0);
+      tl.fromTo("#liveLine", { strokeDasharray: "45 120", strokeDashoffset: 0 }, { strokeDashoffset: -660, duration: 30, ease: "none" }, 0);
+      tl.fromTo(".r1", { scale: .82, opacity: .08 }, { scale: 1.22, opacity: .22, duration: 15, yoyo: true, repeat: 1, ease: "sine.inOut" }, 0);
+      tl.fromTo(".r2", { scale: .9, opacity: .16 }, { scale: 1.14, opacity: .06, duration: 15, yoyo: true, repeat: 1, ease: "sine.inOut" }, 0);
+      tl.fromTo(".r3", { scale: .94, opacity: .06 }, { scale: 1.08, opacity: .2, duration: 15, yoyo: true, repeat: 1, ease: "sine.inOut" }, 0);
+      tl.fromTo(".r4", { scale: .98, opacity: .14 }, { scale: 1.04, opacity: .04, duration: 15, yoyo: true, repeat: 1, ease: "sine.inOut" }, 0);
+      tl.fromTo(".n1", { opacity: .25, scale: .7 }, { opacity: 1, scale: 1.5, duration: 3, yoyo: true, repeat: 9, ease: "sine.inOut", transformOrigin: "center" }, 0);
+      tl.fromTo(".n2", { opacity: .25, scale: .7 }, { opacity: 1, scale: 1.5, duration: 3, yoyo: true, repeat: 9, ease: "sine.inOut", transformOrigin: "center" }, 1);
+      tl.fromTo(".n3", { opacity: .25, scale: .7 }, { opacity: 1, scale: 1.5, duration: 3, yoyo: true, repeat: 9, ease: "sine.inOut", transformOrigin: "center" }, 2);
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

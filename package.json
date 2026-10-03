@@ -1,0 +1,9 @@
+{
+  "name": "baiplay",
+  "version": "1.4.1",
+  "private": true,
+  "description": "Local display orchestration and real-time panorama rendering",
+  "dependencies": {
+    "playwright-core": "1.62.1"
+  }
+}

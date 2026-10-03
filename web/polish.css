@@ -1,0 +1,135 @@
+.device-tools {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.terminal-search {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font: 8px var(--mono);
+}
+
+.terminal-search input {
+  width: 150px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #090c0e;
+  color: var(--text);
+  font: 10px var(--mono);
+}
+
+.terminal-search input:focus {
+  outline: 1px solid var(--cyan);
+  border-color: var(--cyan);
+}
+
+.matrix-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 7px 11px 0;
+  color: var(--cyan);
+  font: 10px var(--mono);
+}
+
+.matrix-summary small {
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.device-grid {
+  padding-top: 8px;
+}
+
+.empty-state {
+  grid-column: 1 / -1;
+  min-height: 220px;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+}
+
+.empty-state strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.empty-state span {
+  margin-top: 6px;
+  font-size: 10px;
+}
+
+.selection-panel a[aria-disabled="true"] {
+  color: var(--muted);
+  border-color: var(--line);
+  background: #101417;
+  cursor: not-allowed;
+  opacity: .65;
+}
+
+@media (max-width: 1050px) {
+  .section-head {
+    align-items: flex-start;
+  }
+
+  .device-tools {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .terminal-search input {
+    width: 100%;
+  }
+}
+
+@media (max-width: 700px) {
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .topbar,
+  .hero,
+  .mode-nav,
+  .workspace,
+  .primary-column,
+  .side-column,
+  .view,
+  .section-head {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .mode-nav button {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .section-head {
+    gap: 8px;
+  }
+
+  .device-tools {
+    width: 56%;
+    max-width: 56%;
+  }
+
+  .terminal-search span {
+    display: none;
+  }
+
+  .filters {
+    max-width: 100%;
+  }
+}
