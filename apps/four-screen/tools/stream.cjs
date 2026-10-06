@@ -24,6 +24,7 @@ for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>shutdown(0));
 async function atomic(file,value){const temp=file+'.tmp';await fs.writeFile(temp,value);await fs.rename(temp,file);}
 async function main(){
  browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_EXECUTABLE || '/opt/google/chrome/chrome',args:['--disable-dev-shm-usage','--disable-background-timer-throttling','--disable-renderer-backgrounding']});
+ lastProgress=Date.now();
  const context=await browser.newContext({viewport:{width:1920,height:1080},timezoneId:'Asia/Shanghai'});
  await fs.mkdir(evidence,{recursive:true});
  const roles=['pulse','panorama1','panorama2','panorama3'];
@@ -32,7 +33,11 @@ async function main(){
   const out=path.join(output,role);await fs.mkdir(out,{recursive:true});
   const page=await context.newPage();page.on('pageerror',e=>shutdown(1,new Error(role+': '+e.message)));
   await page.goto('http://127.0.0.1:'+(process.env.PULSE_FEED_PORT||18784)+'/index.html?mode='+role+'&delivery=stream');
+  lastProgress=Date.now();
   await page.waitForFunction(()=>!!window.Pulse?.status().frame,null,{timeout:15000}).catch(()=>{});
+  // Four independent data waits can exceed one watchdog interval in total.
+  // Completed startup stages are progress even when sensors are unavailable.
+  lastProgress=Date.now();
   const args=['-hide_banner','-loglevel','warning','-y','-f','image2pipe','-framerate','4','-use_wallclock_as_timestamps','1','-probesize','32','-analyzeduration','0','-vcodec','mjpeg','-i','pipe:0','-an','-vf','fps=12','-c:v','libx264','-preset','ultrafast','-tune','zerolatency','-threads','2','-pix_fmt','yuv420p','-b:v','1800k','-maxrate','2400k','-bufsize','4800k','-g','24','-keyint_min','24','-sc_threshold','0','-f','hls','-hls_time','2','-hls_list_size','6','-hls_delete_threshold','6','-hls_start_number_source','epoch','-hls_flags','delete_segments+temp_file+omit_endlist+program_date_time+discont_start','-hls_segment_filename',path.join(out,'seg_%d.ts'),path.join(out,'live.m3u8')];
   const encoder=spawn(process.env.FFMPEG_EXECUTABLE || 'ffmpeg',args,{stdio:['pipe','ignore','inherit']});children.push(encoder);
   encoder.stdin.on('error',e=>shutdown(1,new Error(role+' encoder pipe: '+e.message)));
