@@ -21,7 +21,7 @@ def main():
     with (ROOT/'runtime/logs/spatial-access.jsonl').open('a')as log:log.write(json.dumps({'at':__import__('time').time(),'ip':self.client_address[0],'path':path})+'\n')
     return self.reply(200,json.dumps(feed.snapshot(region),ensure_ascii=False,allow_nan=False).encode(),'application/json')
    files={'/elevator/left.html':pages/'left.html','/elevator/right.html':pages/'right.html','/elevator/live.js':web/'live.js','/elevator/live.css':web/'live.css'}
-   if cfg.get('roomPages',{}).get('lab02'):files['/rooms/lab02.html']=Path(cfg['roomPages']['lab02'])
+   files.update({f'/rooms/{key}.html':Path(file)for key,file in cfg.get('roomPages',{}).items()if key in feed.regions})
    files.update({'/rooms/room-data.js':web/'room-data.js','/rooms/room.js':web/'room.js','/rooms/room.css':web/'room.css'})
    if path in files and files[path].is_file():
     p=files[path];return self.reply(200,p.read_bytes(),mimetypes.guess_type(p.name)[0]or'application/octet-stream')

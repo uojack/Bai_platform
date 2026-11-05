@@ -23,18 +23,18 @@ def projection(vision=None,acoustics=None,runtime=None,now=None,camera='D8',sema
  now=time.time()if now is None else now
  va=age((vision or{}).get('frame',{}).get('timestamp'),now);vf=fresh(va,5)
  monitor=(vision or{}).get('multi_camera_monitor')or{}
- row=next((r for r in monitor.get('cameras',[])if r.get('camera_code')==camera),{})
+ row=next((r for r in monitor.get('cameras',[])if r.get('camera_code')==camera),{})if camera else{}
  def local(kind):
   a=row.get(kind+'_age_seconds');combined=max(0,va)+a if number(va)and number(a)and a>=0 else None
   return vf and monitor.get('enabled')is True and row.get(kind+'_stale')is False and row.get('video_state'if kind=='detection'else'audio_state')=='live'and fresh(combined,5),combined
  dv,da=local('detection');av,aa=local('audio')
  p=row.get('person_count');sound=row.get('dbfs')
  ownp=row.get('person_count_source_camera_code')==camera
- owna=row.get('audio_source_camera_number')==int(camera[1:])and row.get('audio_fallback_active')is False
+ owna=bool(camera and row.get('audio_source_camera_number')==int(camera[1:])and row.get('audio_fallback_active')is False)
  sensor={'camera':camera,'location':row.get('location_name',location),'people':p if dv and ownp and number(p)and p>=0 and int(p)==p else None,'dbfs':sound if av and owna and number(sound)and sound<=0 and row.get('sound_unit')=='dBFS'else None,'detectionAge':da,'audioAge':aa,'frame':(vision or{}).get('frame',{}).get('id'),'timestamp':(vision or{}).get('frame',{}).get('timestamp'),'localAudio':owna,'fps':row.get('yolo_fps')if dv else None}
- sem=next((r for r in (vision or{}).get('multimodal_perception',{}).get('results',[])if r.get('camera_code')==camera),{})
+ sem=next((r for r in (vision or{}).get('multimodal_perception',{}).get('results',[])if r.get('camera_code')==camera),{})if camera else{}
  domain=sem.get('domains',{}).get('spatial_attribute')or{}
- semantic={'state':'WAITING','label':None,'source':'视觉服务器 · '+camera,'age':age(domain.get('updated_at'),now),'independentSemanticServer':'ENDPOINT_REQUIRED'if semantic_host else'NOT_CONNECTED','semanticServerHost':semantic_host}
+ semantic={'state':'WAITING','label':None,'source':'视觉服务器 · '+camera if camera else None,'age':age(domain.get('updated_at'),now),'independentSemanticServer':'ENDPOINT_REQUIRED'if semantic_host else'NOT_CONNECTED','semanticServerHost':semantic_host}
  semantic['services']=semantic_services(services,now)
  if services:semantic['independentSemanticServer']='AUTH_REQUIRED'if all(s['online']and s['resultAccess']=='AUTH_REQUIRED'for s in semantic['services'])else'SERVICE_UNAVAILABLE'
  if vf and sem.get('stale')is False and fresh(age(sem.get('timestamp'),now),120)and fresh(semantic['age'],120)and isinstance(domain.get('label'),str):semantic.update(state='CURRENT',label=domain['label'][:160])
@@ -58,8 +58,10 @@ def projection(vision=None,acoustics=None,runtime=None,now=None,camera='D8',sema
 def region_projection(values,region_id,config,semantic_host=None,services=None,now=None):
  now=time.time()if now is None else now
  result=projection(**values,now=now,camera=config['camera'],location=config['name'],semantic_host=semantic_host,services=services)
- result.update(region=region_id,regionName=config['name'],secondarySensors=[])
+ result.update(region=region_id,regionName=config['name'],sourceScope=config.get('sourceScope','room' if config['camera'] else'unbound'),secondarySensors=[])
  result['sensors']['displayLocation']=config.get('primaryLabel',config['name'])
+ for source in result['acoustics']['sources']:
+  if config.get('acousticsSpaceId')and source['spaceId']==config['acousticsSpaceId']:source['scope']='本区研发视角 · 非全室测量'
  for point in config.get('secondary',[]):
   row=projection(vision=values.get('vision'),now=now,camera=point['camera'],location=point['name'])['sensors']
   row['displayLocation']=point['name'];result['secondarySensors'].append(row)

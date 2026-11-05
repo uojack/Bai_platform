@@ -1,7 +1,7 @@
 import unittest,hashlib
 from apps.spatial_display.feed import projection,region_projection
 from apps.spatial_display.build import build,MARK,END
-from apps.spatial_display.build_room import build_room,MARK as ROOM_MARK,END as ROOM_END,ANCHOR,GUARD
+from apps.spatial_display.build_room import build_room,MARK as ROOM_MARK,END as ROOM_END,ANCHOR,GUARD,LEGACY,SLOTS
 class SpatialDisplayTests(unittest.TestCase):
  def visual(self):return {'frame':{'id':1,'timestamp':999},'multi_camera_monitor':{'enabled':True,'cameras':[{'camera_code':'D8','location_name':'电梯厅','person_count':0,'person_count_source_camera_code':'D8','dbfs':-50,'sound_unit':'dBFS','audio_source_camera_number':8,'audio_fallback_active':False,'detection_age_seconds':.2,'audio_age_seconds':.1,'video_state':'live','audio_state':'live','detection_stale':False,'audio_stale':False}]}}
  def test_zero_occupancy_and_own_audio(self):
@@ -45,9 +45,14 @@ class SpatialDisplayTests(unittest.TestCase):
  def test_missing_room_camera_does_not_substitute_a_door_or_other_room(self):
   room=region_projection({'vision':self.visual()},'lab02',{'camera':'D12','name':'LAB02'},now=1000);self.assertIsNone(room['sensors']['people']);self.assertIsNone(room['sensors']['dbfs'])
  def test_room_builder_has_one_reversible_data_owner_guard(self):
-  raw=b'<html><head></head><body><article data-layer="perception">Original</article><script>function requestBaiHubState() { old(); }</script></body></html>'
-  out=build_room(raw,'http://localhost/api/lab02','http://localhost/rooms','D12','lab02');start=out.index(ROOM_MARK.encode());end=out.index(ROOM_END.encode())+len(ROOM_END)+1
-  restored=(out[:start]+out[end:]).replace(ANCHOR+GUARD,ANCHOR);self.assertEqual(restored,raw);self.assertEqual(out.count(GUARD),1)
-  with self.assertRaises(ValueError):build_room(out,'http://localhost/api','http://localhost','D12','lab02')
+  slots=b''.join(b'<article data-layer="'+slot+b'">Original</article>' for slot in sorted(SLOTS))
+  for writer,guarded in [(ANCHOR,ANCHOR+GUARD),(LEGACY,GUARD+b'\n  '+LEGACY)]:
+   raw=b'<html><head></head><body>'+slots+b'<script>(function(){ '+writer+b' })();</script></body></html>'
+   out=build_room(raw,'http://localhost/api/lab02','http://localhost/rooms','D12','lab02');start=out.index(ROOM_MARK.encode());end=out.index(ROOM_END.encode())+len(ROOM_END)+1
+   restored=(out[:start]+out[end:]).replace(guarded,writer);self.assertEqual(restored,raw);self.assertEqual(out.count(GUARD),1)
+   with self.assertRaises(ValueError):build_room(out,'http://localhost/api','http://localhost','D12','lab02')
+ def test_unbound_room_keeps_global_state_without_local_values(self):
+  p=region_projection({'vision':self.visual(),'runtime':{'ok':True,'runtime':{'status':'HOLD'}}},'unbound',{'camera':None,'name':'Office'},now=1000)
+  self.assertEqual(p['sourceScope'],'unbound');self.assertIsNone(p['sensors']['camera']);self.assertIsNone(p['sensors']['people']);self.assertIsNone(p['sensors']['dbfs']);self.assertEqual(p['core']['status'],'HOLD')
  def test_unknown_has_no_false_sensor_or_render_success(self):
   d=projection(now=1000);self.assertIsNone(d['sensors']['people']);self.assertEqual(d['field']['state'],'UNKNOWN');self.assertEqual(d['core']['state'],'UNKNOWN')
