@@ -9,6 +9,7 @@ from contextlib import contextmanager
 import fcntl
 import hashlib
 import json
+import logging
 import os
 from pathlib import Path
 from adapters.network import direct_opener
@@ -31,6 +32,7 @@ class Bridge:
  def __init__(self,root=ROOT,probe=None):
   self.root=Path(root);self.path=self.root/'runtime/baitv.sqlite'
   self.probe=probe or self.probe_media
+  self._auto_attempts={}
   self.path.parent.mkdir(parents=True,exist_ok=True)
   with self.db()as d:
    d.executescript('CREATE TABLE IF NOT EXISTS jobs(id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, request TEXT NOT NULL, state TEXT NOT NULL, result TEXT, created REAL NOT NULL, updated REAL NOT NULL); CREATE TABLE IF NOT EXISTS desired(role TEXT PRIMARY KEY, programme TEXT NOT NULL, auto INTEGER NOT NULL, updated REAL NOT NULL); CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY,value TEXT NOT NULL);')
@@ -77,8 +79,10 @@ class Bridge:
   with self.db()as d:
    r=d.execute("SELECT value FROM meta WHERE key='heartbeat'").fetchone()
   return json.loads(r[0])if r else None
- def beat(self):
-  with self.db()as d:d.execute("INSERT OR REPLACE INTO meta VALUES('heartbeat',?)",(json.dumps({'at':time.time(),'pid':os.getpid()}),))
+ def beat(self,displays=None):
+  value={'at':time.time(),'pid':os.getpid()}
+  if displays is not None:value['addresses']={d.role:d.address for d in displays}
+  with self.db()as d:d.execute("INSERT OR REPLACE INTO meta VALUES('heartbeat',?)",(json.dumps(value),))
  def start(self):
   self._controller_lock=(self.path.parent/'baitv-controller.lock').open('a')
   fcntl.flock(self._controller_lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
@@ -111,7 +115,7 @@ class Bridge:
    if response.status!=200:raise ValueError('直播媒体服务未就绪，保留原画面')
   return True
  def process(self,adapter,displays):
-  self.beat()
+  self.beat(displays)
   with self.db()as db:
    db.execute('BEGIN IMMEDIATE');r=db.execute("SELECT * FROM jobs WHERE state='queued' ORDER BY created LIMIT 1").fetchone()
    if not r:return
@@ -139,7 +143,7 @@ class Bridge:
   with concurrent.futures.ThreadPoolExecutor(max_workers=4)as pool:results=list(pool.map(one,request['targets']))
   state='done'if all(x['state']=='sent'for x in results)else'partial'if any(x['state']=='sent'for x in results)else'failed'
   with self.db()as db:db.execute('UPDATE jobs SET state=?,result=?,updated=? WHERE id=?',(state,json.dumps({'targets':results},ensure_ascii=False),time.time(),r['id']))
-  self.beat()
+  self.beat(displays)
  def recovery(self,adapter,display,transport,position,now):
   """Recover only the selected managed source. Never take over another input."""
   p=self.preferences().get(display.role)
@@ -148,14 +152,21 @@ class Bridge:
   if uri!=display.url or state in ('PAUSED_PLAYBACK','PLAYING','TRANSITIONING'):
    if uri==display.url and state=='PLAYING':display.retry_count=0
    display.recovery_due=None;return False
-  if state not in ('STOPPED','NO_MEDIA_PRESENT')or display.retry_count>=3:return False
+  if state not in ('STOPPED','NO_MEDIA_PRESENT'):return False
+  attempts=self._auto_attempts.setdefault(display.role,[])
+  attempts[:]=[at for at in attempts if now-at<300]
+  # A cooldown keeps a transient failure from disabling recovery forever.
+  if len(attempts)>=3:return True
   if display.recovery_due is None:display.recovery_due=now+20;return True
   if now<display.recovery_due:return True
   if not self.source(p['programme'])['ready']:display.recovery_due=now+30;return True
   # Verify the UDN again immediately before every automatic write.
-  if adapter.describe(display.address).get('UDN')!=display.udn:raise ValueError('UDN changed; recovery refused')
-  self.probe(p['programme'])
-  display.retry_count+=1
-  adapter.push(display.address,display.url,display.title,mime_type='video/m3u8')
+  try:
+   if adapter.describe(display.address).get('UDN')!=display.udn:raise ValueError('UDN changed; recovery refused')
+   self.probe(p['programme'])
+   attempts.append(now)
+   adapter.push(display.address,display.url,display.title,mime_type='video/m3u8')
+  except Exception as exc:
+   logging.warning('BaiTV automatic recovery deferred for %s: %s',display.role,exc)
   display.recovery_due=now+60
   return True

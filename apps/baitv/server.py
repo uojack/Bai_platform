@@ -58,7 +58,10 @@ class App:
   return out
  def refresh(self):
   prefs=self.bridge.preferences();reads=self.media_reads()
+  beat=self.bridge.heartbeat();addresses=beat.get('addresses',{})if beat and time.time()-beat['at']<90 else{}
   def one(d):
+   candidate=addresses.get(d['role'])
+   if candidate and ipaddress.ip_address(candidate)in self.adapter.subnet:d={**d,'address':candidate}
    role=d['role'];p=prefs.get(role);prog=p['programme']if p else DEFAULTS[role]
    row={'role':role,'name':NAMES[role],'address':d['address'],'programme':prog,'autoRecover':bool(p and p['auto']),'online':False,'verified':False,'transport':'UNKNOWN','error':None,'source':self.bridge.source(prog)}
    try:

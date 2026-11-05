@@ -62,8 +62,16 @@ class BaiTVTests(unittest.TestCase):
   with self.b.db()as d:d.execute('INSERT INTO desired VALUES(?,?,?,?)',('left','panorama1',1,time.time()))
   self.b.recovery(self.a,self.d,{'CurrentTransportState':'STOPPED'},{'TrackURI':self.d.url},50);self.assertFalse(self.a.pushes)
   self.a.udn='wrong'
-  with self.assertRaises(ValueError):self.b.recovery(self.a,self.d,{'CurrentTransportState':'STOPPED'},{'TrackURI':self.d.url},71)
+  self.assertTrue(self.b.recovery(self.a,self.d,{'CurrentTransportState':'STOPPED'},{'TrackURI':self.d.url},71))
   self.assertFalse(self.a.pushes)
+ def test_automatic_recovery_is_bounded_and_resumes_after_cooldown(self):
+  self.source()
+  with self.b.db()as d:d.execute('INSERT INTO desired VALUES(?,?,?,?)',('left','panorama1',1,time.time()))
+  for now in [50,71,132,193,254]:self.b.recovery(self.a,self.d,{'CurrentTransportState':'STOPPED'},{'TrackURI':self.d.url},now)
+  self.assertEqual(len(self.a.pushes),3)
+  self.b.recovery(self.a,self.d,{'CurrentTransportState':'STOPPED'},{'TrackURI':self.d.url},500);self.assertEqual(len(self.a.pushes),4)
+ def test_heartbeat_carries_controller_resolved_addresses(self):
+  self.b.beat([self.d]);self.assertEqual(self.b.heartbeat()['addresses'],{'left':'192.0.2.10'})
  def test_pairing_signatures_and_expiry(self):
   app=App(self.root);s=app.issue();self.assertTrue(app.session(s));self.assertFalse(app.session(s+'tamper'));self.assertFalse(app.session('x.1.no'))
  def test_http_auth_origin_and_static(self):
