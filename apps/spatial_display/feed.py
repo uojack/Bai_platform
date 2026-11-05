@@ -10,7 +10,7 @@ def age(at,now):
  except(ValueError,TypeError):return None
 def fresh(a,limit):return number(a)and -5<=a<=limit
 
-def projection(vision=None,acoustics=None,runtime=None,now=None,camera='D8'):
+def projection(vision=None,acoustics=None,runtime=None,now=None,camera='D8',semantic_host=None):
  now=time.time()if now is None else now
  va=age((vision or{}).get('frame',{}).get('timestamp'),now);vf=fresh(va,5)
  monitor=(vision or{}).get('multi_camera_monitor')or{}
@@ -25,7 +25,7 @@ def projection(vision=None,acoustics=None,runtime=None,now=None,camera='D8'):
  sensor={'camera':camera,'location':row.get('location_name','电梯厅'),'people':p if dv and ownp and number(p)and p>=0 and int(p)==p else None,'dbfs':sound if av and owna and number(sound)and sound<=0 and row.get('sound_unit')=='dBFS'else None,'detectionAge':da,'audioAge':aa,'frame':(vision or{}).get('frame',{}).get('id'),'timestamp':(vision or{}).get('frame',{}).get('timestamp'),'localAudio':owna,'fps':row.get('yolo_fps')if dv else None}
  sem=next((r for r in (vision or{}).get('multimodal_perception',{}).get('results',[])if r.get('camera_code')==camera),{})
  domain=sem.get('domains',{}).get('spatial_attribute')or{}
- semantic={'state':'WAITING','label':None,'source':'视觉服务器 · '+camera,'age':age(domain.get('updated_at'),now),'independentSemanticServer':'NOT_CONNECTED'}
+ semantic={'state':'WAITING','label':None,'source':'视觉服务器 · '+camera,'age':age(domain.get('updated_at'),now),'independentSemanticServer':'ENDPOINT_REQUIRED'if semantic_host else'NOT_CONNECTED','semanticServerHost':semantic_host}
  if vf and sem.get('stale')is False and fresh(age(sem.get('timestamp'),now),120)and fresh(semantic['age'],120)and isinstance(domain.get('label'),str):semantic.update(state='CURRENT',label=domain['label'][:160])
  sources=[];af=fresh(age((acoustics or{}).get('dataCollectedAt'),now),12)and (acoustics or{}).get('transport',{}).get('status')=='OK'
  for s in (acoustics or{}).get('sources',[])[:8]:
@@ -45,9 +45,10 @@ def projection(vision=None,acoustics=None,runtime=None,now=None,camera='D8'):
  return {'schema':'aos.spatial-screen.v1','generatedAt':now,'sensors':sensor,'semantic':semantic,'acoustics':{'online':bool(af),'sources':sources},'core':core,'field':field,'displayOnly':True}
 
 class Feed:
- def __init__(self,base,core):
+ def __init__(self,base,core,semantic_host=None):
+  self.semantic_host=semantic_host
   self.urls={'vision':base+'/api/vision','acoustics':base+'/api/acoustics','runtime':core+'/api/show/runtime'}
-  self.lock=threading.Lock();self.value=projection();self.stop=threading.Event()
+  self.lock=threading.Lock();self.value=projection(semantic_host=semantic_host);self.stop=threading.Event()
  def get(self,url):
   try:
    with urllib.request.urlopen(urllib.request.Request(url,headers={'Accept':'application/json','User-Agent':'EOS-SpatialDisplay/0.1'}),timeout=2.5)as r:raw=r.read(2*1024*1024+1)
@@ -58,7 +59,7 @@ class Feed:
   with concurrent.futures.ThreadPoolExecutor(max_workers=3)as pool:
    while not self.stop.is_set():
     futures={k:pool.submit(self.get,u)for k,u in self.urls.items()};values={k:f.result()for k,f in futures.items()}
-    with self.lock:self.value=projection(**values)
+    with self.lock:self.value=projection(**values,semantic_host=self.semantic_host)
     self.stop.wait(2)
  def snapshot(self):
   with self.lock:return dict(self.value)

@@ -26,5 +26,7 @@ class SpatialDisplayTests(unittest.TestCase):
  def test_injection_is_reversible_and_keeps_all_original_bytes(self):
   raw=b'<html><body><h1>Existing content</h1><script>old()</script></body></html>';out=build(raw,'http://localhost/api/elevator','http://localhost/elevator');start=out.index(MARK.encode());end=out.index(END.encode())+len(END)+1;self.assertEqual(out[:start]+out[end:],raw)
   with self.assertRaises(ValueError):build(out,'http://localhost/api','http://localhost')
+ def test_semantic_host_registration_is_not_algorithm_result_evidence(self):
+  d=projection(now=1000,semantic_host='192.0.2.50');self.assertEqual(d['semantic']['semanticServerHost'],'192.0.2.50');self.assertEqual(d['semantic']['independentSemanticServer'],'ENDPOINT_REQUIRED');self.assertEqual(d['semantic']['state'],'WAITING');self.assertIsNone(d['semantic']['label'])
  def test_unknown_has_no_false_sensor_or_render_success(self):
   d=projection(now=1000);self.assertIsNone(d['sensors']['people']);self.assertEqual(d['field']['state'],'UNKNOWN');self.assertEqual(d['core']['state'],'UNKNOWN')
