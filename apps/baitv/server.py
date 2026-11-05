@@ -2,18 +2,14 @@
 """BaiTV local network operator application; no independent TV writer."""
 from __future__ import annotations
 import concurrent.futures
-import hashlib
-import hmac
 import ipaddress
 import json
 import os
 from pathlib import Path
-import secrets
 import sqlite3
 import sys
 import threading
 import time
-from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from urllib.parse import urlsplit
 
@@ -27,20 +23,6 @@ class App:
   self.root=Path(root);self.site=json.loads((self.root/'private/site.json').read_text());self.displays=json.loads((self.root/'private/displays.json').read_text())
   self.bridge=Bridge(self.root);self.adapter=HuaweiDLNAAdapter(subnet=self.site['tvSubnet'],timeout=2.5)
   self.lock=threading.Lock();self.snapshot={'at':0,'devices':[]};self.stopping=threading.Event();self.refresh_event=threading.Event()
-  self.private=self.root/'private/baitv';self.private.mkdir(mode=0o700,exist_ok=True)
-  auth=self.private/'auth.json'
-  if not auth.exists():
-   fd=os.open(auth,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
-   with os.fdopen(fd,'w')as f:json.dump({'pin':str(secrets.randbelow(90000000)+10000000),'key':secrets.token_hex(32)},f)
-  self.auth=json.loads(auth.read_text());self.attempts={}
- def session(self,cookie):
-  try:
-   key,expiry,signature=cookie.split('.');message=key+'.'+expiry
-   return int(expiry)>time.time()and hmac.compare_digest(signature,hmac.new(self.auth['key'].encode(),message.encode(),hashlib.sha256).hexdigest())
-  except(ValueError,AttributeError):return False
- def issue(self):
-  message=secrets.token_hex(24)+'.'+str(int(time.time()+30*86400))
-  return message+'.'+hmac.new(self.auth['key'].encode(),message.encode(),hashlib.sha256).hexdigest()
  def media_reads(self):
   p=self.root/'runtime/logs/media-access.jsonl';out={};now=time.time()
   try:
@@ -90,28 +72,23 @@ class App:
   with self.lock:value=dict(self.snapshot)
   if time.time()-value['at']>30:
    value['devices']=[{**d,'receiving':False,'error':'读取结果已过期，等待重新连接','transport':'UNKNOWN'}for d in value['devices']]
-  beat=self.bridge.heartbeat();value.update(version='1.0.0',programmes=PROGRAMMES,controller={'online':bool(beat and time.time()-beat['at']<90),'heartbeat':beat},jobs=self.bridge.recent(),phoneUrl='http://baitv.local',lanUrl='http://'+self.site['localAddress'],physicalScreenVerified=False)
+  beat=self.bridge.heartbeat();value.update(version='1.0.1',programmes=PROGRAMMES,controller={'online':bool(beat and time.time()-beat['at']<90),'heartbeat':beat},jobs=self.bridge.recent(),phoneUrl='http://baitv.local',lanUrl='http://'+self.site['localAddress'],physicalScreenVerified=False)
   return value
 
 class Handler(BaseHTTPRequestHandler):
- server_version='BaiTV/1.0'
+ server_version='BaiTV/1.0.1'
  def setup(self):
   super().setup();self.connection.settimeout(12)
  def log_message(self,*args):pass
  @property
  def app(self):return self.server.app
  def local(self):return ipaddress.ip_address(self.client_address[0]).is_loopback
- def authorised(self):
-  if self.local():return True
-  try:c=SimpleCookie(self.headers.get('Cookie',''));return self.app.session(c['baitv'].value)
-  except(KeyError,ValueError):return False
  def headers_safe(self):
   self.send_header('Cache-Control','no-store');self.send_header('X-Content-Type-Options','nosniff');self.send_header('Referrer-Policy','no-referrer');self.send_header('X-Frame-Options','DENY')
   self.send_header('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
- def respond(self,status,value,mime='application/json; charset=utf-8',cookie=None):
+ def respond(self,status,value,mime='application/json; charset=utf-8'):
   raw=value if isinstance(value,bytes)else json.dumps(value,ensure_ascii=False,allow_nan=False).encode()
   self.send_response(status);self.headers_safe();self.send_header('Content-Type',mime);self.send_header('Content-Length',str(len(raw)))
-  if cookie:self.send_header('Set-Cookie','baitv='+cookie+'; HttpOnly; SameSite=Strict; Path=/; Max-Age=2592000')
   self.end_headers();self.wfile.write(raw)
  def permitted(self):
   try:
@@ -122,9 +99,8 @@ class Handler(BaseHTTPRequestHandler):
  def do_GET(self):
   if not self.permitted():return self.respond(403,{'error':'仅供本地网络访问'})
   path=urlsplit(self.path).path
-  if path=='/api/session':return self.respond(200,{'authorised':self.authorised(),'local':self.local(),'pairingPin':self.app.auth['pin']if self.local()else None})
+  if path=='/api/session':return self.respond(200,{'authorised':True,'local':self.local(),'accessMode':'lan_direct'})
   if path.startswith('/api/')or path.startswith('/preview/'):
-   if not self.authorised():return self.respond(401,{'error':'请先输入本机连接码'})
    if path=='/api/status':return self.respond(200,self.app.status())
    if path.startswith('/api/jobs/'):
     job=self.app.bridge.job(path.split('/')[-1]);return self.respond(200,job)if job else self.respond(404,{'error':'没有这条操作记录'})
@@ -147,13 +123,6 @@ class Handler(BaseHTTPRequestHandler):
    n=int(self.headers.get('Content-Length','0'))
    if not 0<n<=8192:raise ValueError('请求大小不正确')
    body=json.loads(self.rfile.read(n))
-   if urlsplit(self.path).path=='/api/pair':
-    attempts=self.app.attempts.setdefault(self.client_address[0],[]);now=time.time();attempts[:]=[t for t in attempts if now-t<300]
-    if len(attempts)>=8:return self.respond(429,{'error':'连接码尝试过多，请5分钟后重试'})
-    attempts.append(now)
-    if not isinstance(body,dict)or not isinstance(body.get('pin'),str)or not hmac.compare_digest(body['pin'],self.app.auth['pin']):return self.respond(401,{'error':'连接码不正确'})
-    return self.respond(200,{'ok':True},cookie=self.app.issue())
-   if not self.authorised():return self.respond(401,{'error':'请先连接BaiTV'})
    if self.path=='/api/refresh':self.app.refresh_event.set();return self.respond(202,{'ok':True})
    if self.path=='/api/repair':
     beat=self.app.bridge.heartbeat()

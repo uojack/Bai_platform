@@ -72,24 +72,32 @@ class BaiTVTests(unittest.TestCase):
   self.b.recovery(self.a,self.d,{'CurrentTransportState':'STOPPED'},{'TrackURI':self.d.url},500);self.assertEqual(len(self.a.pushes),4)
  def test_heartbeat_carries_controller_resolved_addresses(self):
   self.b.beat([self.d]);self.assertEqual(self.b.heartbeat()['addresses'],{'left':'192.0.2.10'})
- def test_pairing_signatures_and_expiry(self):
-  app=App(self.root);s=app.issue();self.assertTrue(app.session(s));self.assertFalse(app.session(s+'tamper'));self.assertFalse(app.session('x.1.no'))
- def test_http_auth_origin_and_static(self):
+ def test_http_direct_access_and_same_origin_control(self):
   app=App(self.root)
   class RemoteHandler(Handler):
    def local(self):return False
   server=Server(('127.0.0.1',0),app);server.RequestHandlerClass=RemoteHandler;t=threading.Thread(target=server.serve_forever,daemon=True);t.start();url='http://127.0.0.1:'+str(server.server_port)
   try:
-   self.assertEqual(urllib.request.urlopen(url+'/').status,200)
-   with self.assertRaises(urllib.error.HTTPError)as e:urllib.request.urlopen(url+'/api/status')
-   self.assertEqual(e.exception.code,401)
-   req=urllib.request.Request(url+'/api/pair',data=json.dumps({'pin':app.auth['pin']}).encode(),headers={'Content-Type':'application/json'},method='POST')
-   with self.assertRaises(urllib.error.HTTPError)as e:urllib.request.urlopen(req)
-   self.assertEqual(e.exception.code,403)
-   req.add_header('Origin',url)
-   with urllib.request.urlopen(req)as r:cookie=r.headers['Set-Cookie'].split(';')[0]
-   with urllib.request.urlopen(urllib.request.Request(url+'/api/status',headers={'Cookie':cookie}))as r:self.assertEqual(r.status,200)
+   with urllib.request.urlopen(url+'/')as r:
+    html=r.read().decode();self.assertNotIn('pairForm',html);self.assertNotIn('连接码',html)
+   with urllib.request.urlopen(url+'/api/session')as r:
+    session=json.load(r);self.assertTrue(session['authorised']);self.assertFalse(session['local']);self.assertEqual(session['accessMode'],'lan_direct');self.assertNotIn('pairingPin',session);self.assertIsNone(r.headers.get('Set-Cookie'))
+   with urllib.request.urlopen(url+'/api/status')as r:self.assertEqual(r.status,200)
+   app.bridge.beat();body=self.body()
+   def request(origin=None,host=None):
+    headers={'Content-Type':'application/json'}
+    if origin:headers['Origin']=origin
+    if host:headers['Host']=host
+    return urllib.request.Request(url+'/api/repair',data=json.dumps(body).encode(),headers=headers,method='POST')
+   for req in [request(),request('http://other.invalid'),request('http://other.invalid','other.invalid')]:
+    with self.assertRaises(urllib.error.HTTPError)as e:urllib.request.urlopen(req)
+    self.assertEqual(e.exception.code,403)
+   with urllib.request.urlopen(request(url))as r:
+    self.assertEqual(r.status,202);self.assertEqual(json.load(r)['state'],'queued')
   finally:server.shutdown();server.server_close();t.join()
+ def test_public_network_address_is_refused(self):
+  app=App(self.root);fake=SimpleNamespace(client_address=('8.8.8.8',1),headers={'Host':'baitv'},app=app)
+  self.assertFalse(Handler.permitted(fake))
 
 class ProjectionTests(unittest.TestCase):
  def test_visual_v15_allowlist(self):
