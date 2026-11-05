@@ -24,8 +24,14 @@ def pick(obj, keys):
     return {key: obj[key] for key in keys if isinstance(obj, dict) and key in obj}
 
 def projection(raw):
-    result = pick(raw, ['schema_version', 'event_type', 'source', 'frame', 'metrics', 'algorithms'])
-    result['multi_camera_monitor'] = pick(raw.get('multi_camera_monitor'), ['enabled', 'state', 'cameras'])
+    if raw.get('event_type') != 'vision.result' or raw.get('schema_version') not in ['1.0','1.1','1.2','1.3','1.4','1.5']:
+        raise ValueError('unsupported vision contract')
+    result = pick(raw, ['schema_version', 'event_type', 'frame'])
+    result['source'] = pick(raw.get('source'), ['service'])
+    result['metrics'] = pick(raw.get('metrics'), ['fps','infer_ms','yolo_ms','face_detect_ms','depth_ms','head_pose_ms','camera_lag_ms','object_count','gpu_memory_by_device'])
+    result['algorithms'] = {key: pick(value, ['enabled','ready']) for key, value in (raw.get('algorithms') or {}).items() if key in ['detection','face_detection','depth','head_pose','speech_recognition','audio_perception','pedestrian_attributes','roi_alarm']}
+    result['multi_camera_monitor'] = pick(raw.get('multi_camera_monitor'), ['enabled', 'state', 'camera_count'])
+    result['multi_camera_monitor']['cameras'] = [pick(row, ['camera_code','location_name','person_count','person_count_source_camera_code','dbfs','sound_calibrated','sound_unit','video_state','audio_state','detection_stale','audio_stale','detection_age_seconds','audio_age_seconds','audio_source_camera_number','audio_source_location_name','audio_fallback_active','yolo_fps']) for row in (raw.get('multi_camera_monitor') or {}).get('cameras', [])[:64]]
     mm = raw.get('multimodal_perception') or {}
     result['multimodal_perception'] = pick(mm, ['enabled', 'state'])
     rows = []

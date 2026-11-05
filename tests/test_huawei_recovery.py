@@ -26,7 +26,9 @@ class RecoveryTests(unittest.TestCase):
             if state['tick']>=ticks:raise EndRun()
         with tempfile.TemporaryDirectory() as t:
             root=Path(t);(root/'tools').mkdir();(root/'runtime').mkdir()
-            with patch.object(app,'DISPLAYS',[display]),patch.object(app,'__file__',str(root/'tools/supervisor.py')),patch.object(app,'HuaweiDLNAAdapter',return_value=Adapter()),patch.object(app,'refresh_address'),patch.object(app.time,'monotonic',side_effect=lambda:1000+8*state['tick']),patch.object(app.time,'sleep',side_effect=sleep):
+            bridge=app.Bridge(root)
+            self.addCleanup(bridge.close)
+            with patch.object(app,'Bridge',return_value=bridge),patch.object(app,'DISPLAYS',[display]),patch.object(app,'__file__',str(root/'tools/supervisor.py')),patch.object(app,'HuaweiDLNAAdapter',return_value=Adapter()),patch.object(app,'refresh_address'),patch.object(app.time,'monotonic',side_effect=lambda:1000+8*state['tick']),patch.object(app.time,'sleep',side_effect=sleep):
                 with self.assertRaises(EndRun):app.run()
         return state
     def test_service_restart_adopts_existing_playback(self):self.assertEqual(self.exercise('playing')['pushes'],0)

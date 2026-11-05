@@ -24,6 +24,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from adapters.huawei_dlna import HuaweiDLNAAdapter
+from apps.baitv.bridge import Bridge
 
 
 MEDIA_BASE = os.environ.get("BAIPLAYER_MEDIA_BASE", "http://127.0.0.1:4341/media")
@@ -146,10 +147,16 @@ def deploy(adapter: HuaweiDLNAAdapter, display: Display) -> bool:
 def run() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     adapter = HuaweiDLNAAdapter(timeout=8)
+    bridge = Bridge()
+    bridge.start()
+    bridge.apply(DISPLAYS)
     next_discovery = time.monotonic() + 60
     if not DISPLAYS:
         raise RuntimeError("No verified television configuration; refusing to deploy")
     while True:
+        # BaiTV submits durable requests; this remains the single TV writer.
+        bridge.apply(DISPLAYS)
+        bridge.process(adapter, DISPLAYS)
         now = time.monotonic()
         discovered: dict[str, str] = {}
         if now >= next_discovery and any(not display.online for display in DISPLAYS):
@@ -250,6 +257,11 @@ def run() -> None:
             tmp.replace(status_path)
             uri = position.get("TrackURI", "")
             state = transport.get("CurrentTransportState", "")
+            try:
+                if bridge.recovery(adapter, display, transport, position, time.monotonic()):
+                    continue
+            except Exception as exc:
+                logging.warning("BaiTV recovery deferred for %s: %s", display.role, exc)
             if uri and display.filename not in uri:
                 display.managed = False
                 display.recovery_due = None
