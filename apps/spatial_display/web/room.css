@@ -1,0 +1,20 @@
+/* Scoped additions inside the existing six AOS cards. No changes to the original grid or titles. */
+.aos-room-live .aos-layers article{padding-bottom:12px}
+.aos-room-live .aos-layers .aos-room-value,.aos-room-live .aos-layers .aos-room-detail,.aos-room-live .aos-layers .aos-room-note{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.35;font-weight:400;letter-spacing:0}
+.aos-room-live .aos-room-value{font-size:17px;color:var(--ivory-soft);margin-top:6px}
+.aos-room-live .aos-room-detail{font-size:11px;color:var(--muted);margin-top:3px}
+.aos-room-live .aos-room-note{font-size:10px;color:var(--muted);margin-top:3px}
+.aos-room-live .aos-heading #data-source{font-size:17px}
+.aos-room-live .aos-layers article::after{animation:none}
+.aos-room-curve{position:absolute;left:68px;right:68px;bottom:330px;height:48px;pointer-events:none;opacity:.65}
+.aos-room-curve>label{font-size:10px;letter-spacing:1px;color:var(--muted)}
+.aos-room-curve svg{position:absolute;left:0;bottom:0;width:100%;height:28px;overflow:visible}
+.aos-room-curve path{fill:none;stroke:var(--copper);stroke-width:1;filter:drop-shadow(0 0 3px #bf8b6833)}
+.aos-room-curve circle{fill:var(--system);animation:aos-room-pulse 2s ease-in-out infinite}
+@keyframes aos-room-pulse{50%{opacity:.3}}
+@media(prefers-reduced-motion:reduce){.aos-room-curve circle{animation:none}}
+/* Keep supplementary values within the existing 238px AOS row. */
+.aos-room-live .aos-layers article{padding-top:14px;padding-bottom:8px}
+.aos-room-live .aos-room-value{font-size:16px;line-height:1.2;margin-top:4px}
+.aos-room-live .aos-room-detail{font-size:10px;line-height:1.2;margin-top:2px}
+.aos-room-live .aos-room-note{font-size:9px;line-height:1.2;margin-top:2px}

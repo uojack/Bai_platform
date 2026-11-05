@@ -19,7 +19,7 @@ def semantic_services(rows,now):
   result.append({'name':row.get('name'),'online':bool(online),'version':version if online else None,'age':sample_age,'resultAccess':row.get('resultAccess','UNKNOWN')if online else'UNKNOWN','resultDataAvailable':False})
  return result
 
-def projection(vision=None,acoustics=None,runtime=None,now=None,camera='D8',semantic_host=None,services=None):
+def projection(vision=None,acoustics=None,runtime=None,now=None,camera='D8',semantic_host=None,services=None,location='电梯厅'):
  now=time.time()if now is None else now
  va=age((vision or{}).get('frame',{}).get('timestamp'),now);vf=fresh(va,5)
  monitor=(vision or{}).get('multi_camera_monitor')or{}
@@ -31,7 +31,7 @@ def projection(vision=None,acoustics=None,runtime=None,now=None,camera='D8',sema
  p=row.get('person_count');sound=row.get('dbfs')
  ownp=row.get('person_count_source_camera_code')==camera
  owna=row.get('audio_source_camera_number')==int(camera[1:])and row.get('audio_fallback_active')is False
- sensor={'camera':camera,'location':row.get('location_name','电梯厅'),'people':p if dv and ownp and number(p)and p>=0 and int(p)==p else None,'dbfs':sound if av and owna and number(sound)and sound<=0 and row.get('sound_unit')=='dBFS'else None,'detectionAge':da,'audioAge':aa,'frame':(vision or{}).get('frame',{}).get('id'),'timestamp':(vision or{}).get('frame',{}).get('timestamp'),'localAudio':owna,'fps':row.get('yolo_fps')if dv else None}
+ sensor={'camera':camera,'location':row.get('location_name',location),'people':p if dv and ownp and number(p)and p>=0 and int(p)==p else None,'dbfs':sound if av and owna and number(sound)and sound<=0 and row.get('sound_unit')=='dBFS'else None,'detectionAge':da,'audioAge':aa,'frame':(vision or{}).get('frame',{}).get('id'),'timestamp':(vision or{}).get('frame',{}).get('timestamp'),'localAudio':owna,'fps':row.get('yolo_fps')if dv else None}
  sem=next((r for r in (vision or{}).get('multimodal_perception',{}).get('results',[])if r.get('camera_code')==camera),{})
  domain=sem.get('domains',{}).get('spatial_attribute')or{}
  semantic={'state':'WAITING','label':None,'source':'视觉服务器 · '+camera,'age':age(domain.get('updated_at'),now),'independentSemanticServer':'ENDPOINT_REQUIRED'if semantic_host else'NOT_CONNECTED','semanticServerHost':semantic_host}
@@ -40,7 +40,7 @@ def projection(vision=None,acoustics=None,runtime=None,now=None,camera='D8',sema
  if vf and sem.get('stale')is False and fresh(age(sem.get('timestamp'),now),120)and fresh(semantic['age'],120)and isinstance(domain.get('label'),str):semantic.update(state='CURRENT',label=domain['label'][:160])
  sources=[];af=fresh(age((acoustics or{}).get('dataCollectedAt'),now),12)and (acoustics or{}).get('transport',{}).get('status')=='OK'
  for s in (acoustics or{}).get('sources',[])[:8]:
-  out={'id':s.get('id'),'name':s.get('name'),'spaceId':s.get('spaceId'),'scope':'研发参考 · 非电梯厅实测','parameters':{},'current':False}
+  out={'id':s.get('id'),'name':s.get('name'),'spaceId':s.get('spaceId'),'scope':'研发参考 · 非'+location+'实测','parameters':{},'current':False}
   if af and s.get('connection')=='CONNECTED'and s.get('spaceId')=='future_scene'and s.get('status')=='READY'and s.get('observationId')and s.get('resultState')in('FRESH','DELAYED'):
    for p in s.get('parameters',[]):
     if p.get('id')not in('M01','T01','T02','T03','T04','M02','M04','H03'):continue
@@ -55,11 +55,22 @@ def projection(vision=None,acoustics=None,runtime=None,now=None,camera='D8',sema
   if fresh(fa,12):field.update(state='OBSERVED',audioState=audio.get('state'),phase=sr.get('phase'),active=sr.get('active'),nativeActive=sr.get('nativeActive'),readbackVerified=sr.get('readbackVerified'),effect=sr.get('effect'),inputPeakDbfs=audio.get('inputPeakDbfs')if number(audio.get('inputPeakDbfs'))else None,callbackCount=audio.get('callbackCount'),xruns=audio.get('xruns'),age=fa)
  return {'schema':'aos.spatial-screen.v1','generatedAt':now,'sensors':sensor,'semantic':semantic,'acoustics':{'online':bool(af),'sources':sources},'core':core,'field':field,'displayOnly':True}
 
+def region_projection(values,region_id,config,semantic_host=None,services=None,now=None):
+ now=time.time()if now is None else now
+ result=projection(**values,now=now,camera=config['camera'],location=config['name'],semantic_host=semantic_host,services=services)
+ result.update(region=region_id,regionName=config['name'],secondarySensors=[])
+ result['sensors']['displayLocation']=config.get('primaryLabel',config['name'])
+ for point in config.get('secondary',[]):
+  row=projection(vision=values.get('vision'),now=now,camera=point['camera'],location=point['name'])['sensors']
+  row['displayLocation']=point['name'];result['secondarySensors'].append(row)
+ return result
+
 class Feed:
- def __init__(self,base,core,semantic_host=None,services=None):
+ def __init__(self,base,core,semantic_host=None,services=None,regions=None):
   self.semantic_host=semantic_host;self.services=services or[];self.health=[];self.next_health=0
+  self.regions=regions or{'elevator':{'camera':'D8','name':'电梯厅'}}
   self.urls={'vision':base+'/api/vision','acoustics':base+'/api/acoustics','runtime':core+'/api/show/runtime'}
-  self.lock=threading.Lock();self.value=projection(semantic_host=semantic_host);self.stop=threading.Event()
+  self.lock=threading.Lock();self.values={key:region_projection({},key,cfg,semantic_host)for key,cfg in self.regions.items()};self.stop=threading.Event()
  def get(self,url):
   try:
    with urllib.request.urlopen(urllib.request.Request(url,headers={'Accept':'application/json','User-Agent':'EOS-SpatialDisplay/0.1'}),timeout=2.5)as r:raw=r.read(2*1024*1024+1)
@@ -74,7 +85,8 @@ class Feed:
      health_futures=[(s,pool.submit(self.get,s['healthUrl']))for s in self.services]
      self.health=[{'kind':s['kind'],'name':s['name'],'health':f.result(),'checkedAt':time.time(),'resultAccess':s.get('resultAccess','UNKNOWN')}for s,f in health_futures]
      self.next_health=time.monotonic()+30
-    with self.lock:self.value=projection(**values,semantic_host=self.semantic_host,services=self.health)
+    snapshots={key:region_projection(values,key,cfg,self.semantic_host,self.health)for key,cfg in self.regions.items()}
+    with self.lock:self.values=snapshots
     self.stop.wait(2)
- def snapshot(self):
-  with self.lock:return dict(self.value)
+ def snapshot(self,region='elevator'):
+  with self.lock:return dict(self.values[region])

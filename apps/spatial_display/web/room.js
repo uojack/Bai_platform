@@ -1,0 +1,17 @@
+/* Own only the existing AOS status slots; room title, mode, clock and grid stay original. */
+(function(){
+'use strict';
+var cfg=window.AOS_ROOM_LIVE_CONFIG,section=document.querySelector('.aos-status'),screen=document.querySelector('.screen');if(!cfg||!section||!screen||!window.RoomLiveData)return;
+section.classList.add('aos-room-live');
+var layers={};Array.from(section.querySelectorAll('[data-layer]')).forEach(function(el){layers[el.dataset.layer]=el;['value','detail','note'].forEach(function(name){var node=document.createElement('small');node.className='aos-room-'+name;el.appendChild(node);});});
+var curve=document.createElement('div');curve.className='aos-room-curve';curve.innerHTML='<label>室内声能变化 · 最近三分钟 · dBFS · 非 PCM 波形</label><svg viewBox="0 0 1000 32" preserveAspectRatio="none" aria-label="室内实际声能趋势"><path/><circle r="1.5"/></svg>';screen.appendChild(curve);
+var data=null,receipt=0,lastStamp=0,lastFrame=null,samples=[],pending=false;
+function text(el,value){if(el.textContent!==value)el.textContent=value;}
+function trend(){var now=performance.now();samples=samples.filter(function(x){return now-x.at<=180000;});var values=samples.filter(function(x){return x.value!==null;}).map(function(x){return x.value;}),low=values.length?Math.min(...values)-2:-80,high=values.length?Math.max(...values)+2:0,path='',prev=null;
+ samples.forEach(function(x){if(x.value===null){prev=null;return;}var px=1000-(now-x.at)/180,py=30-Math.max(0,Math.min(1,(x.value-low)/(high-low)))*27;path+=(prev!==null&&x.at-prev<6000?'L':'M')+px.toFixed(1)+','+py.toFixed(1);prev=x.at;});curve.querySelector('path').setAttribute('d',path);var last=samples[samples.length-1],dot=curve.querySelector('circle');if(last&&last.value!==null&&now-last.at<6000){dot.setAttribute('cx',1000-(now-last.at)/180);dot.setAttribute('cy',30-Math.max(0,Math.min(1,(last.value-low)/(high-low)))*27);dot.style.display='';}else dot.style.display='none';}
+function render(){var v=RoomLiveData.view(data,cfg.camera,cfg.region,(performance.now()-receipt)/1000);v.cards.forEach(function(c){var el=layers[c.id];if(!el)return;var cls='state-'+c.state;if(el.className!==cls)el.className=cls;text(el.querySelector('em'),c.badge);['value','detail','note'].forEach(function(k){text(el.querySelector('.aos-room-'+k),c[k]);});});text(document.getElementById('data-source'),'LAB02 室内 / 门口独立观测 · '+v.serviceNote);text(document.getElementById('updated-at'),v.live?'AOS LIVE · '+new Date(v.stamp*1000).toLocaleTimeString('zh-CN',{timeZone:'Asia/Shanghai',hour12:false}):'数据暂不可用 · 原房间配置保留');trend();}
+async function refresh(){if(pending||document.hidden)return;pending=true;var control=new AbortController(),timer=setTimeout(function(){control.abort();},4000);
+ try{var r=await fetch(cfg.endpoint,{cache:'no-store',signal:control.signal});if(!r.ok)throw Error('HTTP');var next=await r.json();if(next.schema!=='aos.spatial-screen.v1'||next.region!==cfg.region||next.sensors.camera!==cfg.camera)throw Error('SOURCE');if(next.generatedAt>lastStamp){data=next;lastStamp=next.generatedAt;receipt=performance.now();var v=RoomLiveData.view(data,cfg.camera,cfg.region,0);if(v.frame!==lastFrame){samples.push({at:receipt,value:v.dbfs});lastFrame=v.frame;}}}
+ catch(e){data=null;samples.push({at:performance.now(),value:null});samples=samples.slice(-100);}finally{clearTimeout(timer);pending=false;render();}}
+render();refresh();setInterval(render,1000);setInterval(refresh,1000);
+})();

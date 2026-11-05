@@ -1,6 +1,7 @@
 import unittest,hashlib
-from apps.spatial_display.feed import projection
+from apps.spatial_display.feed import projection,region_projection
 from apps.spatial_display.build import build,MARK,END
+from apps.spatial_display.build_room import build_room,MARK as ROOM_MARK,END as ROOM_END,ANCHOR,GUARD
 class SpatialDisplayTests(unittest.TestCase):
  def visual(self):return {'frame':{'id':1,'timestamp':999},'multi_camera_monitor':{'enabled':True,'cameras':[{'camera_code':'D8','location_name':'电梯厅','person_count':0,'person_count_source_camera_code':'D8','dbfs':-50,'sound_unit':'dBFS','audio_source_camera_number':8,'audio_fallback_active':False,'detection_age_seconds':.2,'audio_age_seconds':.1,'video_state':'live','audio_state':'live','detection_stale':False,'audio_stale':False}]}}
  def test_zero_occupancy_and_own_audio(self):
@@ -34,5 +35,19 @@ class SpatialDisplayTests(unittest.TestCase):
  def test_stale_health_and_development_service_are_not_delivery_online(self):
   row={'kind':'intent','name':'意图推理','checkedAt':900,'health':{'scope':'INTENT_REASONING','deployment_channel':'DELIVERY','version':'0.12.0'}}
   self.assertFalse(projection(now=1000,services=[row])['semantic']['services'][0]['online']);row['checkedAt']=999;row['health']['deployment_channel']='DEVELOPMENT';self.assertFalse(projection(now=1000,services=[row])['semantic']['services'][0]['online'])
+ def test_room_views_are_independent_and_do_not_borrow_elevator_people(self):
+  import copy
+  v=self.visual();base=v['multi_camera_monitor']['cameras'][0];base['person_count']=99
+  inside=copy.deepcopy(base);inside.update(camera_code='D12',person_count_source_camera_code='D12',person_count=2,audio_source_camera_number=12)
+  door=copy.deepcopy(base);door.update(camera_code='D11',person_count_source_camera_code='D11',person_count=1,audio_source_camera_number=11)
+  v['multi_camera_monitor']['cameras']+=[inside,door];cfg={'camera':'D12','name':'LAB02','primaryLabel':'室内','secondary':[{'camera':'D11','name':'门口'}]}
+  room=region_projection({'vision':v},'lab02',cfg,now=1000);self.assertEqual(room['sensors']['people'],2);self.assertEqual(room['secondarySensors'][0]['people'],1);self.assertNotIn('totalPeople',room);self.assertEqual(room['region'],'lab02');self.assertEqual(projection(vision=v,now=1000)['sensors']['people'],99)
+ def test_missing_room_camera_does_not_substitute_a_door_or_other_room(self):
+  room=region_projection({'vision':self.visual()},'lab02',{'camera':'D12','name':'LAB02'},now=1000);self.assertIsNone(room['sensors']['people']);self.assertIsNone(room['sensors']['dbfs'])
+ def test_room_builder_has_one_reversible_data_owner_guard(self):
+  raw=b'<html><head></head><body><article data-layer="perception">Original</article><script>function requestBaiHubState() { old(); }</script></body></html>'
+  out=build_room(raw,'http://localhost/api/lab02','http://localhost/rooms','D12','lab02');start=out.index(ROOM_MARK.encode());end=out.index(ROOM_END.encode())+len(ROOM_END)+1
+  restored=(out[:start]+out[end:]).replace(ANCHOR+GUARD,ANCHOR);self.assertEqual(restored,raw);self.assertEqual(out.count(GUARD),1)
+  with self.assertRaises(ValueError):build_room(out,'http://localhost/api','http://localhost','D12','lab02')
  def test_unknown_has_no_false_sensor_or_render_success(self):
   d=projection(now=1000);self.assertIsNone(d['sensors']['people']);self.assertEqual(d['field']['state'],'UNKNOWN');self.assertEqual(d['core']['state'],'UNKNOWN')
