@@ -10,7 +10,16 @@ def age(at,now):
  except(ValueError,TypeError):return None
 def fresh(a,limit):return number(a)and -5<=a<=limit
 
-def projection(vision=None,acoustics=None,runtime=None,now=None,camera='D8',semantic_host=None):
+def semantic_services(rows,now):
+ result=[]
+ for row in rows or[]:
+  h=row.get('health')or{};kind=row.get('kind');sample_age=age(row.get('checkedAt'),now)
+  identity=(kind=='dictionary'and h.get('service')=='acoustic_dictionary'and h.get('instance_role')=='delivery')or(kind=='intent'and h.get('scope')=='INTENT_REASONING'and h.get('deployment_channel')=='DELIVERY')
+  version=h.get('version');online=identity and fresh(sample_age,45)and isinstance(version,str)and len(version)<=32
+  result.append({'name':row.get('name'),'online':bool(online),'version':version if online else None,'age':sample_age,'resultAccess':row.get('resultAccess','UNKNOWN')if online else'UNKNOWN','resultDataAvailable':False})
+ return result
+
+def projection(vision=None,acoustics=None,runtime=None,now=None,camera='D8',semantic_host=None,services=None):
  now=time.time()if now is None else now
  va=age((vision or{}).get('frame',{}).get('timestamp'),now);vf=fresh(va,5)
  monitor=(vision or{}).get('multi_camera_monitor')or{}
@@ -26,6 +35,8 @@ def projection(vision=None,acoustics=None,runtime=None,now=None,camera='D8',sema
  sem=next((r for r in (vision or{}).get('multimodal_perception',{}).get('results',[])if r.get('camera_code')==camera),{})
  domain=sem.get('domains',{}).get('spatial_attribute')or{}
  semantic={'state':'WAITING','label':None,'source':'视觉服务器 · '+camera,'age':age(domain.get('updated_at'),now),'independentSemanticServer':'ENDPOINT_REQUIRED'if semantic_host else'NOT_CONNECTED','semanticServerHost':semantic_host}
+ semantic['services']=semantic_services(services,now)
+ if services:semantic['independentSemanticServer']='AUTH_REQUIRED'if all(s['online']and s['resultAccess']=='AUTH_REQUIRED'for s in semantic['services'])else'SERVICE_UNAVAILABLE'
  if vf and sem.get('stale')is False and fresh(age(sem.get('timestamp'),now),120)and fresh(semantic['age'],120)and isinstance(domain.get('label'),str):semantic.update(state='CURRENT',label=domain['label'][:160])
  sources=[];af=fresh(age((acoustics or{}).get('dataCollectedAt'),now),12)and (acoustics or{}).get('transport',{}).get('status')=='OK'
  for s in (acoustics or{}).get('sources',[])[:8]:
@@ -45,8 +56,8 @@ def projection(vision=None,acoustics=None,runtime=None,now=None,camera='D8',sema
  return {'schema':'aos.spatial-screen.v1','generatedAt':now,'sensors':sensor,'semantic':semantic,'acoustics':{'online':bool(af),'sources':sources},'core':core,'field':field,'displayOnly':True}
 
 class Feed:
- def __init__(self,base,core,semantic_host=None):
-  self.semantic_host=semantic_host
+ def __init__(self,base,core,semantic_host=None,services=None):
+  self.semantic_host=semantic_host;self.services=services or[];self.health=[];self.next_health=0
   self.urls={'vision':base+'/api/vision','acoustics':base+'/api/acoustics','runtime':core+'/api/show/runtime'}
   self.lock=threading.Lock();self.value=projection(semantic_host=semantic_host);self.stop=threading.Event()
  def get(self,url):
@@ -59,7 +70,11 @@ class Feed:
   with concurrent.futures.ThreadPoolExecutor(max_workers=3)as pool:
    while not self.stop.is_set():
     futures={k:pool.submit(self.get,u)for k,u in self.urls.items()};values={k:f.result()for k,f in futures.items()}
-    with self.lock:self.value=projection(**values,semantic_host=self.semantic_host)
+    if time.monotonic()>=self.next_health:
+     health_futures=[(s,pool.submit(self.get,s['healthUrl']))for s in self.services]
+     self.health=[{'kind':s['kind'],'name':s['name'],'health':f.result(),'checkedAt':time.time(),'resultAccess':s.get('resultAccess','UNKNOWN')}for s,f in health_futures]
+     self.next_health=time.monotonic()+30
+    with self.lock:self.value=projection(**values,semantic_host=self.semantic_host,services=self.health)
     self.stop.wait(2)
  def snapshot(self):
   with self.lock:return dict(self.value)

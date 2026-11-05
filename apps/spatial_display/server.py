@@ -9,7 +9,7 @@ from feed import Feed
 
 def main():
  cfg=json.loads((ROOT/'private/spatial-display.json').read_text());pages=Path(cfg['pages']);web=Path(__file__).parent/'web'
- feed=Feed(cfg['feedBase'],cfg['coreBase'],cfg.get('semanticHost'));threading.Thread(target=feed.run,daemon=True).start()
+ feed=Feed(cfg['feedBase'],cfg['coreBase'],cfg.get('semanticHost'),cfg.get('semanticServices'));threading.Thread(target=feed.run,daemon=True).start()
  class Handler(BaseHTTPRequestHandler):
   def log_message(self,*a):pass
   def do_GET(self):

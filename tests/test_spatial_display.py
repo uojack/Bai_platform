@@ -28,5 +28,11 @@ class SpatialDisplayTests(unittest.TestCase):
   with self.assertRaises(ValueError):build(out,'http://localhost/api','http://localhost')
  def test_semantic_host_registration_is_not_algorithm_result_evidence(self):
   d=projection(now=1000,semantic_host='192.0.2.50');self.assertEqual(d['semantic']['semanticServerHost'],'192.0.2.50');self.assertEqual(d['semantic']['independentSemanticServer'],'ENDPOINT_REQUIRED');self.assertEqual(d['semantic']['state'],'WAITING');self.assertIsNone(d['semantic']['label'])
+ def test_public_semantic_health_is_not_an_authenticated_result(self):
+  rows=[{'kind':'dictionary','name':'声之语','checkedAt':999,'resultAccess':'AUTH_REQUIRED','health':{'service':'acoustic_dictionary','instance_role':'delivery','version':'4.17.0'}},{'kind':'intent','name':'意图推理','checkedAt':999,'resultAccess':'AUTH_REQUIRED','health':{'scope':'INTENT_REASONING','deployment_channel':'DELIVERY','version':'0.12.0'}}]
+  d=projection(now=1000,semantic_host='192.0.2.50',services=rows);self.assertEqual(d['semantic']['independentSemanticServer'],'AUTH_REQUIRED');self.assertTrue(all(x['online']for x in d['semantic']['services']));self.assertFalse(any(x['resultDataAvailable']for x in d['semantic']['services']));self.assertIsNone(d['semantic']['label'])
+ def test_stale_health_and_development_service_are_not_delivery_online(self):
+  row={'kind':'intent','name':'意图推理','checkedAt':900,'health':{'scope':'INTENT_REASONING','deployment_channel':'DELIVERY','version':'0.12.0'}}
+  self.assertFalse(projection(now=1000,services=[row])['semantic']['services'][0]['online']);row['checkedAt']=999;row['health']['deployment_channel']='DEVELOPMENT';self.assertFalse(projection(now=1000,services=[row])['semantic']['services'][0]['online'])
  def test_unknown_has_no_false_sensor_or_render_success(self):
   d=projection(now=1000);self.assertIsNone(d['sensors']['people']);self.assertEqual(d['field']['state'],'UNKNOWN');self.assertEqual(d['core']['state'],'UNKNOWN')

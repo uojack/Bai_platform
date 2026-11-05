@@ -3,7 +3,7 @@
 'use strict';
 var config=window.AOS_SCREEN_SUPPLEMENT||{},host=document.querySelector('.screen');if(!host)return;
 var panel=document.createElement('section');panel.className='aos-supplement';panel.setAttribute('aria-label','AOS 电梯厅实时数据补充');
-panel.innerHTML='<div class="aos-s-head"><span>AOS LIVE · 电梯厅</span><small id="aos-s-time">等待实时数据</small></div><div class="aos-s-grid">'+['perception','cognition','core','field'].map(function(id,i){return '<article data-aos="'+id+'"><label>'+['感知 · PERCEPTION','认知 · COGNITION','调度 · BAICORE','渲染 · BAIFIELD'][i]+'</label><strong>等待接入</strong><span></span><small></small></article>';}).join('')+'</div><svg class="aos-s-trace" viewBox="0 0 1000 24" preserveAspectRatio="none" aria-label="电梯厅实际声能趋势"><path/><circle r="1.6"/></svg>';
+panel.innerHTML='<div class="aos-s-head"><span>AOS LIVE · 电梯厅</span><small id="aos-s-semantic-service">语义服务读取中</small><small id="aos-s-time">等待实时数据</small></div><div class="aos-s-grid">'+['perception','cognition','core','field'].map(function(id,i){return '<article data-aos="'+id+'"><label>'+['感知 · PERCEPTION','认知 · COGNITION','调度 · BAICORE','渲染 · BAIFIELD'][i]+'</label><strong>等待接入</strong><span></span><small></small></article>';}).join('')+'</div><svg class="aos-s-trace" viewBox="0 0 1000 24" preserveAspectRatio="none" aria-label="电梯厅实际声能趋势"><path/><circle r="1.6"/></svg>';
 host.appendChild(panel);
 var snapshot=null,receipt=0,samples=[],frame=null,lastStamp=0,pending=false;
 var f=function(v,d){return typeof v==='number'&&isFinite(v)?v.toFixed(d||0):'—';};
@@ -17,6 +17,8 @@ function render(){
  var pa=l&&typeof l.people==='number'&&l.detectionAge+elapsed<=5?l.people:null,db=l&&typeof l.dbfs==='number'&&l.audioAge+elapsed<=5?l.dbfs:null;
  set('perception',pa===null?'人数等待更新':pa+' 人 · 视觉估计',db===null?'本路音频等待更新':f(db,1)+' dBFS · 摄像头音频','电梯厅 · 声能趋势非 PCM 波形',pa!==null||db!==null);
  var sem=s&&s.semantic,semLive=sem&&sem.state==='CURRENT'&&sem.age+elapsed<=120;
+ var services=sem&&sem.services||[],serviceLive=live&&services.length>0&&services.every(function(x){return x.online&&x.age+elapsed<=45;});
+ panel.querySelector('#aos-s-semantic-service').textContent=serviceLive?services.map(function(x){return x.name+' '+x.version;}).join(' · ')+(services.every(function(x){return x.resultAccess==='AUTH_REQUIRED';})?' · 算法结果待授权':' · 算法结果未接入'):'语义服务等待连接';
  var sources=s&&s.acoustics.sources||[],source=sources.find(function(x){return x.current&&x.parameters.M01&&x.parameters.M01.age+elapsed<=180;}),r=source&&source.parameters.M01;
  set('cognition',semLive?'视觉语义：'+sem.label:'语义结果等待更新',r?'研发声学：'+eventName(r.value):'研发声学结果等待更新',r?source.name+' · 非本厅实测':'语义服务器等待数据连接',semLive||!!r);
  var core=s&&s.core,cv=core&&core.state==='OBSERVED';var statuses={HOLD:'保持 / HOLD',RUNNING:'运行中',STOPPED:'已停止',IDLE:'待机'};

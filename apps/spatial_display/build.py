@@ -6,7 +6,7 @@ END='<!-- /AOS-SPATIAL-SUPPLEMENT-V1 -->'
 def build(raw,endpoint,asset_base):
  if MARK.encode()in raw or raw.count(b'</body>')!=1:raise ValueError('Ambiguous original; refusing to replace existing content')
  config=json.dumps({'endpoint':endpoint},ensure_ascii=True).replace('<','\\u003c')
- block=(MARK+'\n<link rel="stylesheet" href="'+asset_base+'/live.css?v=0.1.1"><script>window.AOS_SCREEN_SUPPLEMENT='+config+';</script><script src="'+asset_base+'/live.js?v=0.1.1" defer></script>\n'+END+'\n').encode()
+ block=(MARK+'\n<link rel="stylesheet" href="'+asset_base+'/live.css?v=0.1.2"><script>window.AOS_SCREEN_SUPPLEMENT='+config+';</script><script src="'+asset_base+'/live.js?v=0.1.2" defer></script>\n'+END+'\n').encode()
  result=raw.replace(b'</body>',block+b'</body>')
  assert result.replace(block,b'')==raw
  return result
